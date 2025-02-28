@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardMedia, Typography, Button } from '@mui/material';
+import { Card, CardContent,Typography, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 function ProductCard({ auction }) {
@@ -7,12 +7,7 @@ function ProductCard({ auction }) {
 
   return (
     <Card>
-      <CardMedia
-        component="img"
-        height="140"
-        image={auction.imageUrl || "https://via.placeholder.com/150"}
-        alt={auction.title}
-      />
+      
       <CardContent>
         <Typography variant="h6">{auction.title}</Typography>
         <Typography variant="body2" color="text.secondary">

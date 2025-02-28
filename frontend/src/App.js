@@ -6,6 +6,8 @@ import Auctions from './pages/Auctions';
 import AuctionDetails from './pages/AuctionDetails';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Profile from './pages/Profile';
+import MyBids from './pages/MyBids';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
         <Route path="/auction/:id" element={<AuctionDetails />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/my-bids" element={<MyBids />} /> {/* ✅ Ensure correct route */}
       </Routes>
     </Router>
   );

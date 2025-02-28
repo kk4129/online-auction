@@ -22,7 +22,7 @@ function Signup() {
 
   const onSubmit = async (data) => {
     try {
-      const response = await axios.post('/auth/signup', data);
+      const response = await axios.post('api/auth/signup', data);
       setToken(response.data.token);
       alert('Signup successful!');
       navigate('/auctions');

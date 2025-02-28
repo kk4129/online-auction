@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import axios from '../api/axiosInstance';
 import { setToken } from '../utils/auth';
-import { TextField, Button, Typography, Container, Box } from '@mui/material';
+import { TextField, Button, Typography, Container, Box, Checkbox, FormControlLabel, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 // Validation Schema
@@ -19,22 +19,35 @@ function Login() {
     resolver: yupResolver(schema),
   });
 
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+
   const onSubmit = async (data) => {
     try {
-      const response = await axios.post('/auth/login', data);
-      setToken(response.data.token);
-      alert('Login successful!');
-      navigate('/auctions');
+      const response = await axios.post('api/auth/login', data);
+      const token = response.data.token;
+  
+      if (token) {
+        localStorage.setItem('authToken', token); // ✅ Store token
+        setToken(token); // ✅ Set token in axios instance
+        alert('Login successful!');
+        navigate('/auctions');
+      }
     } catch (error) {
       alert('Login failed: ' + (error.response?.data?.message || 'Server error'));
     }
   };
+  
 
   return (
     <Container maxWidth="sm">
-      <Box mt={5} mb={3}>
-        <Typography variant="h4" align="center">Login</Typography>
+      <Box mt={5} mb={3} textAlign="center">
+        <Typography variant="h4">Login</Typography>
       </Box>
+
+      {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <TextField
           fullWidth
@@ -54,10 +67,17 @@ function Login() {
           error={!!errors.password}
           helperText={errors.password?.message}
         />
-        <Button type="submit" variant="contained" color="primary" fullWidth>
-          Login
+
+        <FormControlLabel
+          control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />}
+          label="Remember Me"
+        />
+
+        <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
+          {loading ? 'Logging in...' : 'Login'}
         </Button>
       </form>
+
       <Typography align="center" mt={2}>
         Don't have an account? <Button onClick={() => navigate('/signup')}>Signup</Button>
       </Typography>
