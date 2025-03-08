@@ -19,6 +19,7 @@ const axios = require("axios");
 
 dotenv.config();
 const app = express();
+app.use('/uploads', express.static('uploads'));
 
 // ✅ CORS Middleware
 app.use(cors({

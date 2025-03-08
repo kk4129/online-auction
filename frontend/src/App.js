@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import MyBids from './pages/MyBids';
+import AboutUs from './pages/AboutUs'; // ✅ Import About Us Page
 
 function App() {
   return (
@@ -20,7 +21,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/my-bids" element={<MyBids />} /> {/* ✅ Ensure correct route */}
+        <Route path="/my-bids" element={<MyBids />} />
+        <Route path="/about-us" element={<AboutUs />} /> {/* ✅ Add About Us Page */}
       </Routes>
     </Router>
   );

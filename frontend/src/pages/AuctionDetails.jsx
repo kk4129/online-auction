@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axiosInstance';
-import { Container, Typography, TextField, Button, Box, CircularProgress } from '@mui/material';
+import { 
+  Container, Typography, TextField, Button, Box, 
+  CircularProgress, Card, CardContent, CardMedia, Grid, Alert 
+} from '@mui/material';
+import { Gavel } from '@mui/icons-material';
 
 const AuctionDetails = () => {
   const { id } = useParams();
@@ -22,7 +26,7 @@ const AuctionDetails = () => {
       setLoading(true);
       const token = localStorage.getItem('authToken');
       if (!token) {
-        alert('You must log in to view this page.');
+        setError('You must log in to view this page.');
         navigate('/login');
         return;
       }
@@ -60,16 +64,13 @@ const AuctionDetails = () => {
       }
   
       const response = await axios.post(
-        `/api/auctions/${id}/bid`, // Update the route to match backend fix
+        `/api/auctions/${id}/bid`, 
         { bidAmount: Number(bidAmount) },
         { headers: { Authorization: `Bearer ${token}` } }
       );
   
-      alert("Bid placed successfully!");
-  
-      // ✅ Instead of re-fetching auction details, update state immediately
       setAuction(response.data.auction);
-      setHighestBidderName("You"); // Update UI optimistically
+      setHighestBidderName("You"); 
       setBidAmount("");
   
     } catch (err) {
@@ -79,35 +80,68 @@ const AuctionDetails = () => {
       setPlacingBid(false);
     }
   };
-  
 
-  if (loading) return <CircularProgress />;
-  if (!auction) return <Typography>Loading auction details...</Typography>;
+  if (loading) return <CircularProgress sx={{ display: 'block', margin: '50px auto' }} />;
+  if (!auction) return <Typography align="center">Loading auction details...</Typography>;
 
   return (
-    <Container>
-      <Typography variant="h4">{auction.title}</Typography>
-      <Typography>Description: {auction.description}</Typography>
-      <Typography>Starting Price: ${auction.startingPrice}</Typography>
-      <p>Current Bid: ${auction?.currentBid || "No bids yet"}</p>
-      <p>Highest Bidder: {auction?.highestBidder || "No bids yet"}</p>
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Card sx={{ boxShadow: 5, borderRadius: 3 }}>
+        <Grid container>
+          <Grid item xs={12} sm={6}>
+            <CardMedia
+              component="img"
+              height="500"
+              image="/images/bun.jpg"
+              alt={auction.title}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <CardContent>
+              <Typography variant="h4" fontWeight="bold">
+                {auction.title}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 1 }}>
+                {auction.description}
+              </Typography>
 
+              <Box sx={{ mt: 2, p: 2, border: "2px solid #1976D2", borderRadius: 2 }}>
+                <Typography variant="h6">
+                  <Gavel /> Starting Price: <strong>${auction.startingPrice}</strong>
+                </Typography>
+                <Typography variant="h6">
+                  <Gavel /> Current Bid: <strong style={{ color: "green" }}>${auction.currentBid || "No bids yet"}</strong>
+                </Typography>
+                <Typography variant="h6">
+                  Highest Bidder: <strong>{auction?.highestBidder || "No bids yet"}</strong>
+                </Typography>
+              </Box>
 
-      <Box component="form" onSubmit={(e) => { e.preventDefault(); placeBid(); }} sx={{ mt: 3 }}>
-        <TextField
-          label="Your Bid"
-          type="number"
-          value={bidAmount}
-          onChange={(e) => setBidAmount(e.target.value)}
-          required
-          fullWidth
-          margin="normal"
-        />
-        <Button type="submit" variant="contained" color="primary" disabled={placingBid}>
-          {placingBid ? 'Placing Bid...' : 'Place Bid'}
-        </Button>
-        {error && <Typography color="error">{error}</Typography>}
-      </Box>
+              <Box component="form" onSubmit={(e) => { e.preventDefault(); placeBid(); }} sx={{ mt: 3 }}>
+                <TextField
+                  label="Your Bid"
+                  type="number"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  required
+                  fullWidth
+                  margin="normal"
+                />
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  color="primary" 
+                  disabled={placingBid} 
+                  fullWidth
+                >
+                  {placingBid ? 'Placing Bid...' : 'Place Your Bid'}
+                </Button>
+              </Box>
+            </CardContent>
+          </Grid>
+        </Grid>
+      </Card>
     </Container>
   );
 };

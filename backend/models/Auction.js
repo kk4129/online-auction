@@ -8,6 +8,7 @@ const auctionSchema = new mongoose.Schema({
   highestBidder: { type: String, default: null }, // ✅ Ensure it's a String, not ObjectId
   endTime: { type: Date, required: true },
   processed: { type: Boolean, default: false },
+  image: {type:String},
 });
 
 module.exports = mongoose.model("Auction", auctionSchema);

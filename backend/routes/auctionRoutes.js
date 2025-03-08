@@ -1,41 +1,66 @@
 const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const { ObjectId } = require("mongoose").Types;
 const router = express.Router();
 const Auction = require("../models/Auction");
 const User = require("../models/User");
-const Bid = require("../models/Bid"); // Import Bid model
+const Bid = require("../models/Bid");
 const authenticateUser = require("../middleware/authMiddleware");
 
-// ✅ Fetch all auctions
+// Ensure uploads directory exists
+const uploadDir = "uploads/";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Ensure this directory exists
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
+
+// Fetch all auctions
 router.get("/", async (req, res) => {
   try {
     const auctions = await Auction.find();
     res.status(200).json(auctions);
   } catch (error) {
-    console.error("❌ Error fetching auctions:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });
 
-// ✅ Fetch a single auction by ID
+// Fetch a single auction by ID
 router.get("/:id", async (req, res) => {
   try {
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid auction ID" });
+    }
+
     const auction = await Auction.findById(req.params.id);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
+
     res.json(auction);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-// ✅ Create a new auction
-router.post("/", async (req, res) => {
+// Create a new auction with image upload
+router.post("/", upload.single("image"), async (req, res) => {
   try {
-    console.log("📌 Received auction creation request:", req.body);
     const { title, description, startingPrice, endDate } = req.body;
-
     if (!title || !description || !startingPrice || !endDate) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     const newAuction = new Auction({
       title,
@@ -44,23 +69,26 @@ router.post("/", async (req, res) => {
       currentBid: Number(startingPrice),
       highestBidder: null,
       endTime: new Date(endDate),
+      image: imageUrl,
+      processed: false, // Ensures processing only happens once
     });
 
     await newAuction.save();
-    console.log("✅ Auction created successfully:", newAuction);
     res.status(201).json(newAuction);
   } catch (error) {
-    console.error("❌ Auction creation error:", error);
     res.status(500).json({ message: "Error creating auction", error: error.message });
   }
 });
 
-// ✅ Place a bid (Requires authentication)
-// ✅ Place a bid (Requires authentication)
+// Place a bid
 router.post("/:id/bid", authenticateUser, async (req, res) => {
   try {
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid auction ID" });
+    }
+
     const { bidAmount } = req.body;
-    const userId = req.user.id; // Get authenticated user ID
+    const userId = req.user.id;
 
     let auction = await Auction.findById(req.params.id);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
@@ -69,79 +97,56 @@ router.post("/:id/bid", authenticateUser, async (req, res) => {
       return res.status(400).json({ message: "Bid must be higher than the current bid" });
     }
 
-    // ✅ Fetch the user by ID to get their name
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // ✅ Save the bid in the Bid collection
     const newBid = new Bid({
       userId,
       auctionId: auction._id,
       amount: bidAmount,
       isWinning: false,
     });
+
     await newBid.save();
 
-    // ✅ Update the Auction Document with highest bidder's name
     auction = await Auction.findByIdAndUpdate(
       req.params.id,
-      {
-        currentBid: bidAmount,
-        highestBidder: user.username,  // ✅ Store highest bidder's name instead of ID
-      },
+      { currentBid: bidAmount, highestBidder: user.username },
       { new: true }
     );
 
-    console.log(`✅ Highest Bidder Updated: ${user.name}`);  // Debugging log
-
     res.status(200).json({ message: "Bid placed successfully", auction });
   } catch (error) {
-    console.error("❌ Error placing bid:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-
-
-
-
-
-// ✅ Process completed auctions and update winners
+// Process completed auctions
 router.post("/process-completed-auction", async (req, res) => {
   try {
     const now = new Date();
     const completedAuctions = await Auction.find({ endTime: { $lte: now }, processed: false });
 
-    if (completedAuctions.length === 0) {
-      return res.status(200).json({ message: "No completed auctions to process." });
-    }
-
     for (const auction of completedAuctions) {
       if (auction.highestBidder) {
-        // ✅ Update the winning bid in the Bid collection
-        await Bid.updateMany(
-          { auctionId: auction._id },
-          { $set: { isWinning: false } } // Mark all bids as lost initially
-        );
+        // Find the highest bidder's user ID
+        const highestBidderUser = await User.findOne({ username: auction.highestBidder });
 
-        await Bid.findOneAndUpdate(
-          { auctionId: auction._id, userId: auction.highestBidder },
-          { $set: { isWinning: true } } // Mark the highest bidder as the winner
-        );
+        if (highestBidderUser) {
+          await Bid.updateMany({ auctionId: auction._id }, { $set: { isWinning: false } });
 
-        console.log(`✅ Auction "${auction.title}" completed. Winner: ${auction.highestBidder}`);
-      } else {
-        console.log(`⚠️ Auction "${auction.title}" ended with no bids.`);
+          await Bid.findOneAndUpdate(
+            { auctionId: auction._id, userId: highestBidderUser._id },
+            { $set: { isWinning: true } }
+          );
+        }
       }
-
-      // ✅ Mark auction as processed
       auction.processed = true;
       await auction.save();
     }
 
     res.status(200).json({ message: "Completed auctions processed successfully." });
   } catch (error) {
-    console.error("❌ Error processing completed auctions:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });

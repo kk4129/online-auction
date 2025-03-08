@@ -9,6 +9,7 @@ const AuctionForm = ({ onAuctionCreated }) => {
     startingPrice: '',
     endDate: ''
   });
+  const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,28 +17,36 @@ const AuctionForm = ({ onAuctionCreated }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleImageChange = (e) => {
+    setImage(e.target.files[0]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-  
+
     try {
-      const response = await axios.post('/api/auctions', {
-        title: formData.title,
-        description: formData.description,
-        startingPrice: Number(formData.startingPrice),
-        endDate: new Date(formData.endDate).toISOString(),
+      const auctionData = new FormData();
+      auctionData.append('title', formData.title);
+      auctionData.append('description', formData.description);
+      auctionData.append('startingPrice', formData.startingPrice);
+      auctionData.append('endDate', new Date(formData.endDate).toISOString());
+      if (image) {
+        auctionData.append('image', image);
+      }
+
+      const response = await axios.post('/api/auctions', auctionData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
-  
+
       console.log('Auction created:', response.data);
       onAuctionCreated(response.data);
       setFormData({ title: '', description: '', startingPrice: '', endDate: '' });
+      setImage(null);
     } catch (error) {
       console.error('Error creating auction:', error);
-  
       if (error.response) {
-        console.error('Response Data:', error.response.data);
         setError(error.response.data.message || 'Failed to create auction.');
       } else {
         setError('Something went wrong. Please try again.');
@@ -46,18 +55,17 @@ const AuctionForm = ({ onAuctionCreated }) => {
       setLoading(false);
     }
   };
-    
-  
 
   return (
     <Container maxWidth="sm">
       <Typography variant="h5" gutterBottom>Create New Auction</Typography>
       {error && <Typography color="error">{error}</Typography>}
-      <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }} encType="multipart/form-data">
         <TextField label="Title" name="title" value={formData.title} onChange={handleChange} required />
         <TextField label="Description" name="description" value={formData.description} onChange={handleChange} required multiline rows={3} />
         <TextField label="Starting Price" name="startingPrice" type="number" value={formData.startingPrice} onChange={handleChange} required />
         <TextField label="End Date" name="endDate" type="datetime-local" value={formData.endDate} onChange={handleChange} required InputLabelProps={{ shrink: true }} />
+        <input type="file" accept="image/*" onChange={handleImageChange} required />
         <Button type="submit" variant="contained" color="primary" disabled={loading}>
           {loading ? 'Creating...' : 'Create Auction'}
         </Button>
